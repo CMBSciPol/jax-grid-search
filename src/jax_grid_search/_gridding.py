@@ -34,6 +34,7 @@ class DistributedGridSearch:
         progress_bar: bool = True,
         result_dir: str = "results",
         old_results: Optional[Dict[str, Array]] = None,
+        strategy: str = "cartesian",
     ) -> None:
         """
         Initialize the grid search.
@@ -49,16 +50,44 @@ class DistributedGridSearch:
             progress_bar: Whether to use tqdm for a progress bar.
             result_dir: Directory to save batch results.
             old_results: Previous results to reduce search space.
+            strategy: Parameter combination strategy. Options:
+                - "cartesian" (default): All combinations using Cartesian product.
+                  Example: [[a,b], [1,2]] -> [(a,1), (a,2), (b,1), (b,2)]
+                - "vectorized": Element-wise pairing using zip.
+                  Example: [[a,b], [1,2]] -> [(a,1), (b,2)]
+                  Requires all parameter arrays to have the same length.
         """
+        # Step 1: Extract parameter names and values from search space
         keys, values = zip(*search_space.items())
 
         self.param_keys = keys
         self.search_space = search_space
         self.objective_fn = objective_fn
         self.result_dir = result_dir
+        self.strategy = strategy
 
-        # Create an iterator over all parameter combinations
-        self.combinations = list(itertools.product(*values))
+        # Step 2: Validate strategy parameter
+        if strategy not in ["cartesian", "vectorized"]:
+            raise ValueError(
+                f"Invalid strategy '{strategy}'. Must be 'cartesian' or 'vectorized'."
+            )
+
+        # Step 3: Validate parameter lengths for vectorized strategy
+        if strategy == "vectorized":
+            lengths = [len(v) for v in values]
+            if not all(length == lengths[0] for length in lengths):
+                raise ValueError(
+                    f"In vectorized strategy, all parameter arrays must have the same length. "
+                    f"Found lengths: {dict(zip(keys, lengths))}"
+                )
+
+        # Step 4: Generate parameter combinations based on strategy
+        if strategy == "vectorized":
+            # Use zip for element-wise pairing: [(a,1), (b,2), (c,3)]
+            self.combinations = list(zip(*values))
+        else:  # cartesian
+            # Use Cartesian product for all combinations: [(a,1), (a,2), (b,1), (b,2)]
+            self.combinations = list(itertools.product(*values))
 
         if old_results is not None and len(old_results) > 0:
             self.reduce_search_space(search_space, old_results)
@@ -167,12 +196,17 @@ class DistributedGridSearch:
         Returns:
             A slice (sub-list) of the full combinations assigned to this process.
         """
+        # Step 1: Calculate base distribution
         total = self.n_combinations
         q, r = divmod(total, total_processes)
+        
+        # Step 2: Distribute combinations with remainder handling
         if rank < r:
+            # First r processes get q+1 combinations each
             start = rank * (q + 1)
             end = start + (q + 1)
         else:
+            # Remaining processes get q combinations each
             start = r * (q + 1) + (rank - r) * q
             end = start + q
         return self.combinations[start:end]
@@ -194,14 +228,17 @@ class DistributedGridSearch:
 
         Saves batch results to disk and clears them from memory.
         """
+        # Step 1: Initialize distributed processing
         rank = jax.process_index()
         total_processes = jax.process_count()
 
+        # Step 2: Get local combinations for this rank
         local_combinations = self._get_rank_slice(rank, total_processes)
         if len(local_combinations) == 0:
             print(f"No combinations left for rank {rank}")
             return
 
+        # Step 3: Setup progress tracking
         assert self.batch_size is not None
         total_batches = (len(local_combinations) + self.batch_size - 1) // self.batch_size
         log_interval = max(1, int(self.log_every * total_batches)) if self.log_every > 0 else 0
@@ -210,13 +247,14 @@ class DistributedGridSearch:
             tqdm(total=total_batches, desc=f"Processing batches on device {rank}/{total_processes}") if self.progress_bar else None
         )
 
-        # Check sample function output shape using the first combination.
+        # Step 4: Validate objective function output format
         sample_batch = next(self._batch_generator(local_combinations, self.batch_size))
         sample_params = {key: np.array([combo[idx]]) for idx, key in enumerate(self.param_keys) for combo in [sample_batch[0]]}
         sample_result = jax.eval_shape(self.objective_fn, **sample_params)
         if not isinstance(sample_result, dict) or "value" not in sample_result:
             raise KeyError("The objective function must return a dictionary with a 'value' key.")
 
+        # Step 5: Process batches and save results
         for batch_idx, batch in enumerate(self._batch_generator(local_combinations, self.batch_size)):
             param_dicts = [dict(zip(self.param_keys, combo)) for combo in batch]
             param_arrays = {key: jnp.array([d[key] for d in param_dicts]) for key in self.param_keys}
@@ -261,7 +299,7 @@ class DistributedGridSearch:
             search_space: A dictionary where keys are parameter names and values are arrays of possible values.
             results: A dictionary where keys match search_space keys and values are arrays of completed results.
         """
-        # Generate all possible combinations from the search space
+        # Step 1: Extract completed combinations from results
         param_names = list(search_space.keys())
         completed_combinations = list(zip(*[results[key] for key in param_names]))
 
@@ -275,9 +313,12 @@ class DistributedGridSearch:
         def tuple_in_list(tup: tuple[Array], tuple_list: CombinationsType) -> bool:
             return any(tuples_equal(tup, other) for other in tuple_list)
 
+        # Step 2: Filter out already completed combinations
         print(f"Reducing search space from {len(self.combinations)} to ", end="")
         reduced_combinations = [tup for tup in tqdm(self.combinations) if not tuple_in_list(tup, completed_combinations)]
         print(f"{len(reduced_combinations)}")
+        
+        # Step 3: Update combinations list
         self.combinations = reduced_combinations
         self.n_combinations = len(self.combinations)
 
