@@ -68,17 +68,14 @@ class DistributedGridSearch:
 
         # Step 2: Validate strategy parameter
         if strategy not in ["cartesian", "vectorized"]:
-            raise ValueError(
-                f"Invalid strategy '{strategy}'. Must be 'cartesian' or 'vectorized'."
-            )
+            raise ValueError(f"Invalid strategy '{strategy}'. Must be 'cartesian' or 'vectorized'.")
 
         # Step 3: Validate parameter lengths for vectorized strategy
         if strategy == "vectorized":
             lengths = [len(v) for v in values]
             if not all(length == lengths[0] for length in lengths):
                 raise ValueError(
-                    f"In vectorized strategy, all parameter arrays must have the same length. "
-                    f"Found lengths: {dict(zip(keys, lengths))}"
+                    f"In vectorized strategy, all parameter arrays must have the same length. Found lengths: {dict(zip(keys, lengths))}"
                 )
 
         # Step 4: Generate parameter combinations based on strategy
@@ -199,7 +196,7 @@ class DistributedGridSearch:
         # Step 1: Calculate base distribution
         total = self.n_combinations
         q, r = divmod(total, total_processes)
-        
+
         # Step 2: Distribute combinations with remainder handling
         if rank < r:
             # First r processes get q+1 combinations each
@@ -317,7 +314,7 @@ class DistributedGridSearch:
         print(f"Reducing search space from {len(self.combinations)} to ", end="")
         reduced_combinations = [tup for tup in tqdm(self.combinations) if not tuple_in_list(tup, completed_combinations)]
         print(f"{len(reduced_combinations)}")
-        
+
         # Step 3: Update combinations list
         self.combinations = reduced_combinations
         self.n_combinations = len(self.combinations)
