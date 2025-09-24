@@ -14,6 +14,7 @@ else:
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jax.experimental.multihost_utils import sync_global_devices
 from jaxtyping import Array
 from scipy.interpolate import interp1d
 from tqdm import tqdm
@@ -286,7 +287,7 @@ class DistributedGridSearch:
 
         if progress_bar:
             progress_bar.close()
-        jax.experimental.multihost_utils.sync_global_devices("DONE")
+        sync_global_devices("DONE")
 
     def reduce_search_space(self: Self, search_space: dict[str, Array], results: dict[str, Array]) -> None:
         """
