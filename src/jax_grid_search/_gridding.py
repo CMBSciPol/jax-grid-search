@@ -52,11 +52,21 @@ class DistributedGridSearch:
             result_dir: Directory to save batch results.
             old_results: Previous results to reduce search space.
             strategy: Parameter combination strategy. Options:
-                - "cartesian" (default): All combinations using Cartesian product.
-                  Example: [[a,b], [1,2]] -> [(a,1), (a,2), (b,1), (b,2)]
-                - "vectorized": Element-wise pairing using zip.
-                  Example: [[a,b], [1,2]] -> [(a,1), (b,2)]
-                  Requires all parameter arrays to have the same length.
+                - "cartesian" (default): Full Cartesian product of all parameters.
+                  Creates all possible combinations - complete factorial design.
+                  Example: {"x": [a,b], "y": [1,2]} -> [(a,1), (a,2), (b,1), (b,2)]
+                  Use case: Exhaustive search when interactions between parameters are unknown.
+                  Total combinations: product of all parameter array lengths.
+
+                - "vectorized": Element-wise pairing using zip for targeted combinations.
+                  Pairs parameters at corresponding indices - expert-guided search.
+                  Example: {"x": [a,b,c], "y": [1,2,3]} -> [(a,1), (b,2), (c,3)]
+                  Use case: When you have expert knowledge of good parameter combinations
+                  or want to explore specific regions of parameter space efficiently.
+                  Requirements: All parameter arrays must have identical length.
+                  Total combinations: length of parameter arrays (all must be equal).
+
+                  Validation: Raises ValueError if array lengths differ in vectorized mode.
         """
         # Step 1: Extract parameter names and values from search space
         keys, values = zip(*search_space.items())
