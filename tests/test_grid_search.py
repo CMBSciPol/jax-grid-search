@@ -215,3 +215,133 @@ def test_bad_objective_fn(
 
     with pytest.raises(KeyError):
         grid_search.run()
+
+
+def test_vectorized_basic(
+    objective_function: Callable[[Array, Array, Array, Array], dict[str, Array]],
+) -> None:
+    """Test basic vectorized functionality with equal-length parameter arrays."""
+    search_space = {
+        "x": jnp.array([1.0, 2.0, 3.0]),
+        "y": jnp.array([0.5, 1.5, 2.5]),
+        "z": jnp.array([0.0, 1.0, 2.0]),
+        "w": jnp.array([2.0, 3.0, 4.0]),
+    }
+
+    grid_search = DistributedGridSearch(
+        objective_function, search_space, batch_size=8, progress_bar=True, log_every=0.1, strategy="vectorized"
+    )
+
+    # Should have exactly 3 combinations: (1,0.5,0,2), (2,1.5,1,3), (3,2.5,2,4)
+    assert grid_search.n_combinations == 3
+
+    grid_search.run()
+    results = grid_search.stack_results("results")
+
+    assert results is not None
+    assert len(results["x"]) == 3
+
+    # Verify the combinations are paired correctly
+    expected_combinations = [(1.0, 0.5, 0.0, 2.0), (2.0, 1.5, 1.0, 3.0), (3.0, 2.5, 2.0, 4.0)]
+    actual_combinations = list(zip(results["x"], results["y"], results["z"], results["w"]))
+
+    # Results are sorted by value, so we need to verify all expected combinations exist
+    for expected in expected_combinations:
+        assert expected in actual_combinations
+
+
+def test_vectorized_validation() -> None:
+    """Test that vectorized strategy validates equal array lengths."""
+
+    def dummy_fn(x: Array, y: Array) -> dict[str, Array]:
+        return {"value": x + y}
+
+    # Test invalid strategy
+    with pytest.raises(ValueError, match="Invalid strategy 'invalid'"):
+        DistributedGridSearch(dummy_fn, {"x": jnp.array([1.0])}, strategy="invalid")
+
+    # Test with mismatched lengths
+    search_space_mismatch = {
+        "x": jnp.array([1.0, 2.0, 3.0]),  # length 3
+        "y": jnp.array([0.5, 1.5]),  # length 2
+    }
+
+    with pytest.raises(ValueError, match="all parameter arrays must have the same length"):
+        DistributedGridSearch(dummy_fn, search_space_mismatch, strategy="vectorized")
+
+    # Test with matching lengths should work
+    search_space_match = {
+        "x": jnp.array([1.0, 2.0, 3.0]),
+        "y": jnp.array([0.5, 1.5, 2.5]),
+    }
+
+    grid_search = DistributedGridSearch(dummy_fn, search_space_match, strategy="vectorized")
+    assert grid_search.n_combinations == 3
+
+
+def test_vectorized_vs_cartesian(
+    objective_function: Callable[[Array, Array, Array, Array], dict[str, Array]],
+) -> None:
+    """Test that vectorized strategy produces different results than cartesian strategy."""
+    search_space = {
+        "x": jnp.array([1.0, 2.0]),
+        "y": jnp.array([0.5, 1.5]),
+        "z": jnp.array([0.0, 1.0]),
+        "w": jnp.array([2.0, 3.0]),
+    }
+
+    # Cartesian strategy should have 2^4 = 16 combinations
+    grid_search_cartesian = DistributedGridSearch(objective_function, search_space, batch_size=8, progress_bar=False, strategy="cartesian")
+    assert grid_search_cartesian.n_combinations == 16
+
+    # Vectorized strategy should have 2 combinations
+    grid_search_vectorized = DistributedGridSearch(
+        objective_function, search_space, batch_size=8, progress_bar=False, strategy="vectorized"
+    )
+    assert grid_search_vectorized.n_combinations == 2
+
+
+def test_vectorized_resume(
+    objective_function: Callable[[Array, Array, Array, Array], dict[str, Array]],
+) -> None:
+    """Test resume functionality with vectorized strategy."""
+    search_space = {
+        "x": jnp.array([1.0, 2.0, 3.0]),
+        "y": jnp.array([0.5, 1.5, 2.5]),
+        "z": jnp.array([0.0, 1.0, 2.0]),
+        "w": jnp.array([2.0, 3.0, 4.0]),
+    }
+
+    # First run
+    grid_search = DistributedGridSearch(objective_function, search_space, batch_size=8, progress_bar=False, strategy="vectorized")
+    grid_search.run()
+    results = grid_search.stack_results("results")
+
+    # Resume with same search space should have 0 combinations left
+    grid_search_resume = DistributedGridSearch(
+        objective_function, search_space, batch_size=8, progress_bar=False, strategy="vectorized", old_results=results
+    )
+    assert grid_search_resume.n_combinations == 0
+
+
+def test_vectorized_edge_cases() -> None:
+    """Test edge cases for vectorized strategy."""
+
+    def simple_fn(x: Array) -> dict[str, Array]:
+        return {"value": x**2}
+
+    # Single element arrays
+    search_space_single = {
+        "x": jnp.array([1.0]),
+    }
+
+    grid_search = DistributedGridSearch(simple_fn, search_space_single, strategy="vectorized")
+    assert grid_search.n_combinations == 1
+
+    # Empty arrays should work but produce 0 combinations
+    search_space_empty = {
+        "x": jnp.array([]),
+    }
+
+    grid_search_empty = DistributedGridSearch(simple_fn, search_space_empty, strategy="vectorized")
+    assert grid_search_empty.n_combinations == 0

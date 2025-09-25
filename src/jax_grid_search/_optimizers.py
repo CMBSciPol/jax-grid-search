@@ -11,6 +11,24 @@ from ._progressbar import ProgressBar
 
 
 class OptimizerState(NamedTuple):
+    """
+    Container for optimization state during continuous optimization.
+
+    This NamedTuple tracks the complete state of an optimization process,
+    including current and best parameters, optimizer internals, and optional
+    update history for debugging.
+
+    Attributes:
+        params: Current parameter values at this optimization step.
+        state: Internal optimizer state (e.g., momentum buffers, line search state).
+        updates: Parameter updates computed at this step (before applying to params).
+        update_norm: L2 norm of the current parameter updates.
+        value: Objective function value at current parameters.
+        best_val: Best (lowest) objective function value seen so far.
+        best_params: Parameter values that achieved the best objective value.
+        update_history: Optional array logging [update_norm, value] history if log_updates=True.
+    """
+
     params: PyTree
     state: PyTree
     updates: PyTree
@@ -25,6 +43,23 @@ def _debug_callback(
     id: int,
     arguments: Any,
 ) -> str:
+    """
+    Format progress information for optimization monitoring.
+
+    This callback function creates a human-readable progress string for the ProgressBar
+    during optimization. It displays the current update norm, convergence tolerance,
+    iteration number, and objective value.
+
+    Args:
+        id: Progress bar task ID (typically progress_id from optimize function).
+        arguments: Tuple containing (update_norm, tol, iter_num, value, max_iters).
+
+    Returns:
+        Formatted string showing optimization progress in scientific notation.
+
+    Example output:
+        "Optimizing 0... update 1e-03 => 1e-10 at iter 15 value 2e-01"
+    """
     update_norm, tol, iter_num, value, max_iters = arguments
     return f"Optimizing {id}... update {update_norm:.0e} => {tol:.0e} at iter {iter_num} value {value:.0e}"
 
@@ -32,7 +67,7 @@ def _debug_callback(
 @partial(jax.jit, static_argnums=(1, 2, 3, 5, 9))
 def optimize(
     init_params: Array,
-    fun: Callable[[Array], Array],
+    objective_fn: Callable[[Array], Array],
     opt: optax._src.base.GradientTransformationExtraArgs,
     max_iter: int,
     tol: Array,
@@ -43,14 +78,65 @@ def optimize(
     log_updates: bool = False,
     **kwargs: Any,
 ) -> tuple[Array, OptimizerState]:
+    """
+    Optimize a function using gradient-based methods with Optax optimizers.
+
+    This function performs JIT-compiled continuous optimization using various Optax optimizers
+    (LBFGS, Adam, SGD, etc.) with built-in convergence checking, progress monitoring, and
+    optional parameter bounds.
+
+    Args:
+        init_params: Initial parameter values to start optimization from.
+        objective_fn: Objective function to minimize. Must be JAX-compatible and differentiable.
+            Should accept parameters and return a scalar value.
+        opt: Optax optimizer instance (e.g., optax.lbfgs(), optax.adam()).
+        max_iter: Maximum number of optimization iterations.
+        tol: Convergence tolerance. Optimization stops when update norm < tol.
+        progress: Optional ProgressBar instance for tracking optimization progress.
+        progress_id: ID for progress tracking when running multiple optimizations in parallel.
+        upper_bound: Optional upper bounds for parameters (used with box projection).
+        lower_bound: Optional lower bounds for parameters (used with box projection).
+        log_updates: If True, logs update norms and values for debugging.
+        **kwargs: Additional keyword arguments passed to the objective function.
+
+    Returns:
+        tuple: (best_params, final_optimizer_state)
+            - best_params: Parameters that achieved the lowest objective value
+            - final_optimizer_state: OptimizerState containing optimization history
+
+    Example:
+        >>> import jax.numpy as jnp
+        >>> import optax
+        >>> from jax_grid_search import optimize, ProgressBar
+        >>>
+        >>> def quadratic(x):
+        ...     return jnp.sum((x - 3.0) ** 2)
+        >>>
+        >>> init_params = jnp.array([0.0])
+        >>> optimizer = optax.lbfgs()
+        >>>
+        >>> with ProgressBar() as p:
+        ...     best_params, state = optimize(
+        ...         init_params, quadratic, optimizer,
+        ...         max_iter=50, tol=1e-10, progress=p
+        ...     )
+        >>> print(f"Optimized parameters: {best_params}")
+
+    Note:
+        This function is JIT-compiled for performance. The objective function must be
+        JAX-compatible (using jnp instead of np, avoiding Python control flow).
+        Use jax.lax.cond or other JAX control flow primitives for conditional logic.
+    """
     # Define a function that computes both value and gradient of the objective.
-    value_and_grad_fun = jax.value_and_grad(fun)
+    value_and_grad_fun = jax.value_and_grad(objective_fn)
     update_history = jnp.zeros((max_iter, 2)) if log_updates else None
 
     # Single optimization step.
     def step(carry: OptimizerState) -> OptimizerState:
         value, grad = value_and_grad_fun(carry.params, **kwargs)  # Compute value and gradient
-        updates, state = opt.update(grad, carry.state, carry.params, value=carry.value, grad=grad, value_fn=fun, **kwargs)  # Perform update
+        updates, state = opt.update(
+            grad, carry.state, carry.params, value=carry.value, grad=grad, value_fn=objective_fn, **kwargs
+        )  # Perform update
         update_norm = otu.tree_l2_norm(updates)  # Compute update norm
         params = optax.apply_updates(carry.params, updates)  # Update params
         if upper_bound is not None and lower_bound is not None:
