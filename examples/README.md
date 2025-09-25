@@ -26,9 +26,8 @@ The examples are organized to progressively build understanding from basic conce
 # Install the package
 pip install jax_grid_search
 
-# For distributed examples, install MPI (optional)
-# Ubuntu/Debian: sudo apt-get install mpich
-# macOS: brew install mpich
+# For distributed examples, install MPI
+# Ubuntu/Debian: sudo apt-get install mpich or libopenmpi-dev
 # Or use your HPC cluster's MPI implementation
 ```
 
@@ -51,7 +50,6 @@ mpirun -n 4 python 05-distributed-grid-search.py
 ## 📚 Example Contents
 
 ### 01-basic-grid-search.ipynb
-**Runtime**: ~2-3 minutes | **What you'll learn:**
 - Creating objective functions with proper return format
 - Defining parameter search spaces with `jnp.linspace` and `jnp.arange`
 - Running grid search with automatic batch sizing
@@ -60,44 +58,34 @@ mpirun -n 4 python 05-distributed-grid-search.py
 - Understanding memory considerations
 
 ### 02-advanced-grid-search.ipynb
-**Runtime**: ~3-5 minutes | **What you'll learn:**
 - **Vectorized strategy** for element-wise parameter pairing
 - **Resume functionality** using `old_results` to continue interrupted searches
 - **Memory management** with automatic and manual batch sizing
 - **Multiple return values** from objective functions
 - **Progress customization** with different logging frequencies
-- **Advanced result analysis** techniques
 
 ### 03-basic-optimization.ipynb
-**Runtime**: ~1-2 minutes | **What you'll learn:**
 - Simple quadratic function optimization with LBFGS
 - **Different optimizers**: LBFGS, Adam, SGD, RMSprop
 - **Progress tracking** with ProgressBar integration
 - **Convergence monitoring** with tolerance and iteration limits
 - **Parameter bounds** using box constraints
 - **Result visualization** and optimization trajectories
-- **JAX compatibility** requirements for objective functions
 
 ### 04-advanced-optimization.ipynb
-**Runtime**: ~2-4 minutes | **What you'll learn:**
 - **Update history logging** with `log_updates=True` and analysis plots
 - **Parallel optimization** using `jax.vmap` for multiple problems
 - **Progress tracking** multiple concurrent optimizations with unique IDs
 - **Custom optimizers** and Optax optimizer chains
-- **Debugging techniques** using callbacks and state inspection
-- **Performance optimization** and JIT compilation best practices
-- **Real-world likelihood parameter estimation** example
 
 ### 05-distributed-grid-search.ipynb + .py
-**Runtime**: ~30-60 seconds (MPI required) | **What you'll learn:**
 - **MPI setup** and JAX distributed initialization
 - **Process distribution** and rank-based computation
 - **Result aggregation** across multiple processes
-- **Error handling** for distributed failures
 - **Performance scaling** analysis and best practices
 - **HPC cluster compatibility** (SLURM vs OpenMPI)
 
-## 🎯 Best Practices
+##  Best Practices
 
 ### Objective Function Design
 - Always return a dictionary with a `"value"` key
@@ -119,29 +107,3 @@ mpirun -n 4 python 05-distributed-grid-search.py
 - Ensure all processes can access the result directory
 - Use appropriate MPI implementations for your cluster
 - Monitor load balancing across processes
-
-## 🔧 Troubleshooting
-
-**Common Issues:**
-- **"Invalid strategy" error**: Check that vectorized strategy has equal-length parameter arrays
-- **Memory errors**: Reduce batch size or increase memory_limit
-- **MPI failures**: Verify MPI installation and cluster configuration
-- **JAX compatibility**: Ensure objective functions use JAX operations only
-
-**Performance Tips:**
-- Use GPU when available for better automatic batch sizing
-- Consider the trade-off between batch size and memory usage
-- Profile your objective function to identify bottlenecks
-
-## 📖 Additional Resources
-
-- **[Main README](../README.md)** - Complete API documentation and installation
-- **[CLAUDE.md](../CLAUDE.md)** - Development and testing guidelines
-- **[Source Code](../src/jax_grid_search/)** - Implementation details
-
-## 💡 Need Help?
-
-- Check the troubleshooting section above
-- Review the comprehensive docstrings in the source code
-- Look at similar problems in the example notebooks
-- Open an issue on the project repository
