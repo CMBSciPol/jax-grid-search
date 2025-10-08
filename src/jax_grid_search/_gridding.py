@@ -389,6 +389,61 @@ class DistributedGridSearch:
         return sorted_results
 
     @staticmethod
+    def batched_stack_results(result_folder: str, batch_size: int) -> Optional[dict[str, Array]]:
+        """
+        Stack *all* results from `result_folder` by reading files in chunks of `batch_size`.
+        Returns the same structure and global ordering as `stack_results(result_folder)`
+        (i.e., a dict of numpy arrays sorted by the 'value' key).
+
+        Args:
+            result_folder: Folder containing .pkl files.
+            batch_size: Number of files to read per chunk.
+
+        Returns:
+            Dictionary of stacked (and globally sorted) results, or None if empty.
+        """
+        result_files = sorted(glob.glob(os.path.join(result_folder, "*.pkl")))
+        if len(result_files) == 0:
+            print("No result files found.")
+            return None
+
+        # Accumulate lists across chunks without keeping all files open at once.
+        combined_results = None
+
+        num_batches = DistributedGridSearch.get_num_batches(result_folder, batch_size)
+
+        # Read files in chunks of `batch_size`
+        for batch_idx in range(num_batches):
+            print(f"Processing batch {batch_idx + 1}/{num_batches}")
+
+            batch_results = DistributedGridSearch.stack_results(result_folder, batch_size=batch_size, batch_index=batch_idx)
+
+            if batch_results is None:
+                print(f"Batch {batch_idx} is empty, skipping.")
+                continue
+
+            if combined_results is None:
+                combined_results = {key: [] for key in batch_results.keys()}
+            else:
+                for k, v in batch_results.items():
+                    combined_results[k].append(v)
+
+        if combined_results is None:
+            print("No results found in any batch.")
+            return None
+
+        # Convert to numpy arrays (same as stack_results)
+
+        final_results = {k: np.concatenate(v, axis=0) for k, v in combined_results.items()}
+
+        assert "value" in final_results, "Missing 'value' in accumulated results."
+        # sort w.r.t to value
+        sorted_indices = np.argsort(final_results["value"].mean(axis=tuple(range(1, final_results["value"].ndim))))
+        sorted_results = {key: value[sorted_indices] for key, value in final_results.items()}
+
+        return sorted_results
+
+    @staticmethod
     def get_num_batches(result_folder: str, batch_size: int) -> int:
         """
         Get number of available batches given batch size.
