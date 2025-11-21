@@ -43,7 +43,7 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 
-urls = { "Homepage" = "https://github.com/ASKabalan/jax-grid-search" }
+urls = { "Homepage" = "https://github.com/CMBSciPol/jax-grid-search" }
 
 [project.optional-dependencies]
 test = [
