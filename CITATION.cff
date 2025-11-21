@@ -8,3 +8,4 @@ title: "JAX Distributed Grid Search for Hyperparameter Tuning"
 version: 0.1.8
 date-released: 2025/04/08
 repository-code: "https://github.com/CMBSciPol/jax-grid-search"
+DOI: 10.5281/zenodo.17674778 
