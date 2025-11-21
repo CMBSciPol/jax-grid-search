@@ -5,6 +5,9 @@
 [![Upload Python Package](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/python-publish.yml/badge.svg)](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/python-publish.yml)
 [![PyPI version](https://badge.fury.io/py/jax-grid-search.svg)](https://badge.fury.io/py/jax-grid-search)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<a href="https://doi.org/10.5281/zenodo.17674777"><img src="https://zenodo.org/badge/917061582.svg" alt="DOI"></a>
+
+
 
 ## About
 
