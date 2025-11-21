@@ -5,6 +5,6 @@ authors:
     given-names: Wassim
     orcid: https://orcid.org/0009-0001-6501-4564
 title: "JAX Distributed Grid Search for Hyperparameter Tuning"
-version: 0.1.7
+version: 0.1.8
 date-released: 2025/04/08
 repository-code: "https://github.com/CMBSciPol/jax-grid-search"
