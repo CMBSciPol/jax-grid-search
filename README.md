@@ -1,10 +1,22 @@
 # Distributed Grid Search & Continuous Optimization using JAX
 
-[![Testing](https://github.com/ASKabalan/jax-grid-search/actions/workflows/tests.yml/badge.svg)](https://github.com/ASKabalan/jax-grid-search/actions/workflows/tests.yml)
-[![Code Formatting](https://github.com/ASKabalan/jax-grid-search/actions/workflows/formatting.yml/badge.svg)](https://github.com/ASKabalan/jax-grid-search/actions/workflows/formatting.yml)
-[![Upload Python Package](https://github.com/ASKabalan/jax-grid-search/actions/workflows/python-publish.yml/badge.svg)](https://github.com/ASKabalan/jax-grid-search/actions/workflows/python-publish.yml)
+[![Testing](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/tests.yml/badge.svg)](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/tests.yml)
+[![Code Formatting](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/formatting.yml/badge.svg)](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/formatting.yml)
+[![Upload Python Package](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/python-publish.yml/badge.svg)](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/python-publish.yml)
 [![PyPI version](https://badge.fury.io/py/jax-grid-search.svg)](https://badge.fury.io/py/jax-grid-search)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## About
+
+This package is designed to minimize likelihoods computed by [FURAX](https://github.com/CMBSciPol/furax), a JAX-based CMB analysis framework. It provides distributed grid search capabilities specifically optimized for:
+
+- **Spatial spectral index variability:** Efficiently explore parameter spaces for spatially-varying spectral indices in foreground models
+- **Foreground component optimization:** Test and compare different foreground component configurations to find the optimal model choice
+- **Likelihood model optimization:** Systematically search through discrete model configurations and continuously optimize their parameters
+
+The distributed grid search is built to handle the computational demands of CMB likelihood analysis, leveraging JAX's performance and enabling efficient parallel exploration of both discrete and continuous parameter spaces.
+
+---
 
 This repository provides two complementary optimization tools:
 
@@ -353,7 +365,7 @@ For performance purposes, you need to make sure that the discrete parameters tha
   author       = {Kabalan, Wassim},
   title        = {JAX Distributed Grid Search for Hyperparameter Tuning},
   year         = {2025},
-  version      = {0.1.5},
-  howpublished = {\url{https://github.com/asKabalan/jax-grid-search}},
+  version      = {0.1.7},
+  howpublished = {\url{https://github.com/CMBSciPol/jax-grid-search}},
   note         = {Accessed: 2025-04-08}
 }
