@@ -2,7 +2,7 @@
 
 This directory contains comprehensive examples demonstrating both distributed grid search and continuous optimization capabilities.
 
-## 📋 Overview
+## Overview
 
 The examples are organized to progressively build understanding from basic concepts to advanced techniques:
 
@@ -14,11 +14,14 @@ The examples are organized to progressively build understanding from basic conce
 - **[03-basic-optimization.ipynb](./03-basic-optimization.ipynb)** - Getting started with continuous optimization
 - **[04-advanced-optimization.ipynb](./04-advanced-optimization.ipynb)** - Advanced optimization techniques and debugging
 
+### Function Conditioning
+- **[06-function-conditioning.ipynb](./06-function-conditioning.ipynb)** - Parameter transformation and output normalization
+
 ### Distributed Computing
 - **[05-distributed-grid-search.ipynb](./05-distributed-grid-search.ipynb)** - Multi-process grid search with MPI
 - **[05-distributed-grid-search.py](./05-distributed-grid-search.py)** - Companion Python script for MPI execution
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -33,13 +36,6 @@ pip install jax_grid_search
 
 ### Running Examples
 
-**Jupyter Notebooks:**
-```bash
-# Launch Jupyter in the examples directory
-cd examples
-jupyter lab
-```
-
 **Distributed Examples:**
 ```bash
 cd examples
@@ -47,7 +43,7 @@ mpirun -n 4 python 05-distributed-grid-search.py
 # Or use srun instead of mpirun depending on your HPC cluster
 ```
 
-## 📚 Example Contents
+## Example Contents
 
 ### 01-basic-grid-search.ipynb
 - Creating objective functions with proper return format
@@ -93,17 +89,8 @@ mpirun -n 4 python 05-distributed-grid-search.py
 - Avoid Python control flow (use `jax.lax.cond`, `jnp.where`)
 - Consider numerical stability for optimization
 
-### Memory Management
-- Use `memory_limit` parameter for automatic GPU batch sizing
-- Monitor memory usage during large grid searches
-- Consider checkpointing for long-running searches
-
-### Performance Optimization
-- Enable JIT compilation for objective functions when possible
-- Use appropriate batch sizes based on your hardware
-- Consider distributed execution for large parameter spaces
-
-### Distributed Computing
-- Ensure all processes can access the result directory
-- Use appropriate MPI implementations for your cluster
-- Monitor load balancing across processes
+### Parameter Conditioning
+- Use min-max scaling when parameters have vastly different scales
+- Apply log transforms for positive-only parameters (temperature, amplitude)
+- Normalize output by problem size (e.g., number of pixels × components)
+- Verify transformations with to_opt/from_opt roundtrips
