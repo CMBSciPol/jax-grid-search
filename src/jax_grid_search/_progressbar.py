@@ -51,6 +51,21 @@ class ProgressBar:
     """
 
     def __init__(self: Self, *args: None, **kwargs: None) -> None:
+        """Initialize the progress bar.
+
+        Args:
+            *args: Positional arguments passed to Rich Progress constructor.
+            **kwargs: Keyword arguments passed to Rich Progress constructor.
+                Common options include refresh_per_second, transient, etc.
+                See Rich documentation for full list of options.
+
+        Example:
+            >>> with ProgressBar() as p:  # Use defaults
+            ...     optimize(...)
+
+            >>> with ProgressBar(refresh_per_second=10) as p:  # Custom refresh
+            ...     optimize(...)
+        """
         self.tasks: Dict[TaskID, Task] = {}
         self.progress = Progress(*args, **kwargs)
         self.progress.start()
@@ -132,11 +147,14 @@ class ProgressBar:
         return callback(_finish_task, id, total, ordered=True)
 
     def close(self) -> None:
+        """Close the progress bar and clean up resources."""
         self.progress.stop()
 
     def __enter__(self: Self) -> Self:
+        """Enter the context manager, starting the progress bar."""
         self.progress.__enter__()
         return self
 
     def __exit__(self: Self, exc_type: type[RuntimeError], exc_value: RuntimeError, traceback: Any) -> Any:
+        """Exit the context manager, closing the progress bar."""
         return self.progress.__exit__(exc_type, exc_value, traceback)

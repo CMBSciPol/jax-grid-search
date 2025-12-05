@@ -14,8 +14,10 @@ import os
 import sys
 import time
 
-# Set environment variables for better distributed performance
+# Make sure that there is a single device per process
 os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count=1"
+os.environ["JAX_PLATFORMS"] = "cpu"
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 import jax
 import jax.numpy as jnp
