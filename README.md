@@ -395,9 +395,6 @@ with ProgressBar() as p:
 result = from_opt(result_opt)  # Back to physical space
 print(f"Optimized: temp={result['temp']:.2f}, beta={result['beta']:.3f}")
 ```
-
-See [06-function-conditioning.ipynb](./examples/06-function-conditioning.ipynb) for detailed examples including custom transforms.
-
 ### 4. Optimizing Likelihood parameters and models
 
 You can use the continuous optimization to optimize the parameters of a model that is defined in a function.
