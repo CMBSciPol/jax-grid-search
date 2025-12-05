@@ -17,6 +17,7 @@ This package provides two complementary optimization approaches:
 Main Components:
     DistributedGridSearch: Main class for parallel discrete parameter optimization
     optimize: Function for continuous optimization with various Optax optimizers
+    condition: Function conditioning (parameter transforms + output normalization)
     ProgressBar: Progress tracking compatible with JAX transformations
 
 Example:
@@ -39,7 +40,7 @@ For comprehensive tutorials and examples, see the examples/ directory.
 """
 
 from ._gridding import DistributedGridSearch
-from ._optimizers import optimize
+from ._optimizers import condition, optimize
 from ._progressbar import ProgressBar
 
-__all__ = ["DistributedGridSearch", "optimize", "ProgressBar"]
+__all__ = ["DistributedGridSearch", "optimize", "ProgressBar", "condition"]

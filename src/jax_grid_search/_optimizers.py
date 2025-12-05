@@ -1,4 +1,5 @@
-from functools import partial
+from collections.abc import Callable as CallableABC
+from functools import partial, wraps
 from typing import Any, Callable, NamedTuple, Optional
 
 import jax
@@ -151,6 +152,7 @@ def optimize(
             carry.best_params,
             carry.params,
         )
+
         best_val = jnp.where((carry.best_val < value), carry.best_val, value)
 
         if progress:
@@ -198,3 +200,140 @@ def optimize(
     final_opt_state = final_opt_state._replace(best_params=best_params, best_val=best_value)
 
     return final_opt_state.best_params, final_opt_state
+
+
+def condition(
+    fn: CallableABC[..., Any],
+    lower: Any | None = None,
+    upper: Any | None = None,
+    transform_fn: Any | None = None,
+    inv_transform_fn: Any | None = None,
+    factor: float = 1.0,
+) -> tuple[CallableABC[..., Any], CallableABC[..., Any], CallableABC[..., Any]]:
+    """Apply parameter transformation and output normalization to a function.
+
+    Supports two modes of parameter transformation:
+    1. Min-max scaling: Maps parameters from [lower, upper] to [0, 1]
+    2. Custom transforms: Apply arbitrary functions (e.g., log transform)
+
+    Args:
+        fn: Function to wrap, fn(params, *args, **kwargs) -> scalar
+        lower: Lower bounds for min-max scaling (pytree, same structure as params)
+        upper: Upper bounds for min-max scaling (pytree, same structure as params)
+        transform_fn: Forward transforms (pytree of callables, e.g., {'T': jnp.log})
+                      Applied to convert physical params to optimization space
+        inv_transform_fn: Inverse transforms (pytree of callables, e.g., {'T': jnp.exp})
+                          Applied to convert optimization params back to physical space
+        factor: Normalization factor for output (default 1.0 = no scaling)
+                Output = fn(params) / factor
+
+    Returns:
+        Tuple of (wrapped_fn, to_opt, from_opt) where:
+            - wrapped_fn: Function that takes transformed params
+            - to_opt: Convert physical params to optimization space
+            - from_opt: Convert optimization params to physical space
+
+    Examples:
+        # No conditioning (identity)
+        >>> wrapped_fn, to_opt, from_opt = condition(fn)
+
+        # Min-max scaling only
+        >>> lower = {'T': 10.0, 'beta': 0.5}
+        >>> upper = {'T': 40.0, 'beta': 3.0}
+        >>> wrapped_fn, to_opt, from_opt = condition(fn, lower=lower, upper=upper)
+
+        # Custom transforms (log for temperature)
+        >>> transform_fn = {
+        ...     'temp_dust': jnp.log,
+        ...     'beta_dust': lambda x: x,
+        ...     'beta_pl': lambda x: x,
+        ... }
+        >>> inv_transform_fn = {
+        ...     'temp_dust': jnp.exp,
+        ...     'beta_dust': lambda x: x,
+        ...     'beta_pl': lambda x: x,
+        ... }
+        >>> wrapped_fn, to_opt, from_opt = condition(
+        ...     fn, transform_fn=transform_fn, inv_transform_fn=inv_transform_fn
+        ... )
+
+        # Output normalization only
+        >>> wrapped_fn, to_opt, from_opt = condition(fn, factor=npix * ncomp)
+
+        # Combine min-max with output normalization
+        >>> wrapped_fn, to_opt, from_opt = condition(
+        ...     fn, lower=lower, upper=upper, factor=npix * ncomp
+        ... )
+    """
+    # Determine which parameter transformation mode to use
+    has_bounds = lower is not None and upper is not None
+    has_custom = transform_fn is not None and inv_transform_fn is not None
+
+    # Validation
+    if has_bounds and has_custom:
+        raise ValueError("Cannot specify both (lower, upper) and (transform_fn, inv_transform_fn). Choose one transformation mode.")
+
+    if (lower is None) != (upper is None):
+        raise ValueError("Must specify both lower and upper, or neither.")
+
+    if (transform_fn is None) != (inv_transform_fn is None):
+        raise ValueError("Must specify both transform_fn and inv_transform_fn, or neither.")
+
+    # Build transformation functions
+    if has_bounds:
+        # Min-max scaling: physical -> [0, 1]
+        def to_opt(params: PyTree) -> PyTree:
+            return jax.tree.map(lambda p, lo, hi: (p - lo) / (hi - lo), params, lower, upper)
+
+        def from_opt(opt_params: PyTree) -> PyTree:
+            return jax.tree.map(lambda u, lo, hi: u * (hi - lo) + lo, opt_params, lower, upper)
+
+        def clip_opt(opt_params: PyTree) -> PyTree:
+            return jax.tree.map(lambda u: jnp.clip(u, 0.0, 1.0), opt_params)
+
+    elif has_custom:
+        # Custom transforms: physical -> transformed space
+        def to_opt(params: PyTree) -> PyTree:
+            return jax.tree.map(lambda p, f: f(p), params, transform_fn)
+
+        def from_opt(opt_params: PyTree) -> PyTree:
+            return jax.tree.map(lambda u, f: f(u), opt_params, inv_transform_fn)
+
+        def clip_opt(opt_params: PyTree) -> PyTree:
+            # No clipping for custom transforms (user handles bounds if needed)
+            return opt_params
+
+    else:
+        # Identity transformation
+        def to_opt(params: PyTree) -> PyTree:
+            return params
+
+        def from_opt(opt_params: PyTree) -> PyTree:
+            return opt_params
+
+        def clip_opt(opt_params: PyTree) -> PyTree:
+            return opt_params
+
+    # Build wrapped function
+    @wraps(fn)
+    def wrapped_fn(opt_params: PyTree, *args: Any, **kwargs: Any) -> Any:
+        physical_params = from_opt(opt_params)
+        return fn(physical_params, *args, **kwargs) / factor
+
+    # Attach utilities and metadata
+    wrapped_fn.to_opt = to_opt  # type: ignore[attr-defined]
+    wrapped_fn.from_opt = from_opt  # type: ignore[attr-defined]
+    wrapped_fn.clip_opt = clip_opt  # type: ignore[attr-defined]
+    wrapped_fn.factor = factor  # type: ignore[attr-defined]
+    wrapped_fn.original_fn = fn  # type: ignore[attr-defined]
+
+    # Store transformation info for debugging
+    wrapped_fn.mode = "bounds" if has_bounds else ("custom" if has_custom else "identity")  # type: ignore[attr-defined]
+    if has_bounds:
+        wrapped_fn.lower = lower  # type: ignore[attr-defined]
+        wrapped_fn.upper = upper  # type: ignore[attr-defined]
+    if has_custom:
+        wrapped_fn.transform_fn = transform_fn  # type: ignore[attr-defined]
+        wrapped_fn.inv_transform_fn = inv_transform_fn  # type: ignore[attr-defined]
+
+    return wrapped_fn, to_opt, from_opt

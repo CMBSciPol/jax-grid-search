@@ -352,10 +352,51 @@ with ProgressBar() as p:
 
 ```
 
-**Distributed Execution:**
-- Ensure the number of parameter combinations is reasonable for the number of processes
-- Use `jax.distributed.initialize()` before creating the grid search
-- Check that all processes can access the same result directory
+### 3. Function Conditioning
+
+Improve optimization performance by transforming parameters to similar scales and normalizing outputs. This is essential for problems with parameters in different ranges (e.g., temperature vs spectral index) or large objective values (e.g., chi-square with many pixels).
+
+```python
+import jax.numpy as jnp
+import optax
+from jax_grid_search import condition, optimize, ProgressBar
+
+# Function with parameters in different scales and large output
+npix = 12 * 64**2  # HEALPix pixels
+
+def objective(params):
+    # Simulate chi-square scaled by number of pixels
+    return npix * ((params['temp'] - 20)**2 + (params['beta'] - 1.5)**2)
+
+# Apply conditioning: parameter scaling + output normalization
+lower = {'temp': 10.0, 'beta': 0.5}
+upper = {'temp': 40.0, 'beta': 3.0}
+
+conditioned_fn, to_opt, from_opt = condition(
+    objective,
+    lower=lower,
+    upper=upper,
+    factor=npix  # Normalize by problem size
+)
+
+# Transform parameters to [0,1] space, optimize, then transform back
+init_opt = to_opt({'temp': 15.0, 'beta': 1.0})
+
+with ProgressBar() as p:
+    result_opt, _ = optimize(
+        init_opt,
+        conditioned_fn,
+        optax.lbfgs(),
+        max_iter=100,
+        tol=1e-6,
+        progress=p
+    )
+
+result = from_opt(result_opt)  # Back to physical space
+print(f"Optimized: temp={result['temp']:.2f}, beta={result['beta']:.3f}")
+```
+
+See [06-function-conditioning.ipynb](./examples/06-function-conditioning.ipynb) for detailed examples including custom transforms.
 
 ### 4. Optimizing Likelihood parameters and models
 
