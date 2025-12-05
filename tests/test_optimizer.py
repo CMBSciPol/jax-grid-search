@@ -153,7 +153,7 @@ def test_condition_output_normalization() -> None:
 
     # Function with large output values
     def large_output_fn(x):
-        return ((1000.0 * (x - 3.0) ** 2).squeeze())
+        return (1000.0 * (x - 3.0) ** 2).squeeze()
 
     # Apply normalization
     factor = 1000.0
