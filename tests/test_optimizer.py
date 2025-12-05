@@ -105,7 +105,7 @@ def test_condition_custom_transforms() -> None:
     def temp_fn(params):
         T = params["T"]
         # Minimum at T = 20
-        return (jnp.log(T) - jnp.log(20.0)) ** 2
+        return ((jnp.log(T) - jnp.log(20.0)) ** 2).squeeze()
 
     # Apply log transform
     transform_fn = {"T": jnp.log}
@@ -153,7 +153,7 @@ def test_condition_output_normalization() -> None:
 
     # Function with large output values
     def large_output_fn(x):
-        return 1000.0 * (x - 3.0) ** 2
+        return ((1000.0 * (x - 3.0) ** 2).squeeze())
 
     # Apply normalization
     factor = 1000.0

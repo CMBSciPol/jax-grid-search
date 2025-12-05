@@ -138,7 +138,7 @@ def optimize(
         updates, state = opt.update(
             grad, carry.state, carry.params, value=carry.value, grad=grad, value_fn=objective_fn, **kwargs
         )  # Perform update
-        update_norm = otu.tree_l2_norm(updates)  # Compute update norm
+        update_norm = otu.tree_norm(updates)  # Compute update norm
         params = optax.apply_updates(carry.params, updates)  # Update params
         if upper_bound is not None and lower_bound is not None:
             params = optax.projections.projection_box(params, lower_bound, upper_bound)  # Apply box constraints
