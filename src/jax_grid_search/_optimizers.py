@@ -147,11 +147,11 @@ def optimize(
             carry = carry._replace(update_history=carry.update_history.at[iter_num].set(to_log))
 
         best_params = jax.tree.map(
-            lambda x, y: jnp.where((carry.best_val < value) | jnp.isnan(value), x, y),
+            lambda x, y: jnp.where((carry.best_val < value), x, y),
             carry.best_params,
             carry.params,
         )
-        best_val = jnp.where((carry.best_val < value) | jnp.isnan(value), carry.best_val, value)
+        best_val = jnp.where((carry.best_val < value), carry.best_val, value)
 
         if progress:
             iter_num = otu.tree_get(carry.state, "count")
@@ -186,12 +186,12 @@ def optimize(
 
     # Was the last evaluation better than the best?
     best_params = jax.tree.map(
-        lambda x, y: jnp.where((final_opt_state.best_val < final_opt_state.value) | jnp.isnan(final_opt_state.value), x, y),
+        lambda x, y: jnp.where((final_opt_state.best_val < final_opt_state.value), x, y),
         final_opt_state.best_params,
         final_opt_state.params,
     )
     best_value: float = jnp.where(
-        (final_opt_state.best_val < final_opt_state.value) | jnp.isnan(final_opt_state.value),
+        (final_opt_state.best_val < final_opt_state.value),
         final_opt_state.best_val,
         final_opt_state.value,
     )  # type: ignore[assignment]
