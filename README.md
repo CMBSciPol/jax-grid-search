@@ -402,11 +402,13 @@ For performance purposes, you need to make sure that the discrete parameters tha
 
 ## Citation
 
-@misc{kabalan2025jaxgridsearch,
-  author       = {Kabalan, Wassim},
-  title        = {JAX Distributed Grid Search for Hyperparameter Tuning},
-  year         = {2025},
-  version      = {0.1.7},
-  howpublished = {\url{https://github.com/CMBSciPol/jax-grid-search}},
-  note         = {Accessed: 2025-04-08}
+```
+@software{Kabalan_JAX_Distributed_Grid_2025,
+          author = {Kabalan, Wassim},
+          month = apr,
+          title = {{JAX Distributed Grid Search for Hyperparameter Tuning}},
+          url = {https://github.com/CMBSciPol/jax-grid-search},
+          version = {0.1.8},
+          year = {2025}
 }
+```
