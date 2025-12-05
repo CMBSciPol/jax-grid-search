@@ -220,7 +220,24 @@ class DistributedGridSearch:
         return self.combinations[start:end]
 
     def _batch_generator(self: Self, local_combinations: CombinationsType, batch_size: int) -> Iterator[CombinationsType]:
-        """Generates batches of parameter combinations from the local slice."""
+        """Generate batches of parameter combinations from the local slice.
+
+        Yields batches of parameter combinations assigned to this process,
+        sized according to batch_size for memory efficiency.
+
+        Args:
+            local_combinations: List of parameter combinations assigned to this process.
+            batch_size: Number of combinations per batch.
+
+        Yields:
+            Iterator[CombinationsType]: Batches of parameter combinations,
+                where each batch is a list of tuples containing parameter values.
+
+        Note:
+            Only yields combinations assigned to this process's rank.
+            Batch size determined by suggest_batch_size() or user override.
+            The last batch may be smaller if combinations don't divide evenly.
+        """
         n_batches = len(local_combinations) // batch_size
         # Handle the case where the last batch may not be full.
         for i in range(n_batches):
@@ -231,10 +248,34 @@ class DistributedGridSearch:
             yield local_combinations[-remainder:]
 
     def run(self: Self) -> None:
-        """
-        Run the grid search.
+        """Execute the distributed grid search across all parameter combinations.
 
-        Saves batch results to disk and clears them from memory.
+        This method performs the core grid search operation:
+        - Partitions parameter combinations across available processes
+        - Evaluates the objective function in batches
+        - Saves results to individual files per batch
+        - Displays progress if progress_bar=True
+
+        In distributed mode (multiple processes):
+        - Each process handles its assigned slice of combinations
+        - Results saved as 'result_dir/results_batch_{i}_rank_{rank}.pkl'
+
+        In single-process mode:
+        - Processes all combinations sequentially
+        - Results saved as 'result_dir/results_batch_{i}_rank_0.pkl'
+
+        Returns:
+            None. Results are written to disk in result_dir.
+
+        Example:
+            >>> grid_search = DistributedGridSearch(objective_fn, search_space)
+            >>> grid_search.run()  # Execute the search
+            >>> results = grid_search.stack_results("results")  # Load results
+
+        Note:
+            - Requires objective_fn to return dict with 'value' key
+            - Result files can be aggregated using stack_results()
+            - Previous results can be resumed with old_results parameter
         """
         # Step 1: Initialize distributed processing
         rank = jax.process_index()
