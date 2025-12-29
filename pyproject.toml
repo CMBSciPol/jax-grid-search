@@ -15,7 +15,10 @@ dependencies = [
     "optax",
     "jaxtyping",
     "typing-extensions; python_version < '3.11'",
-    "rich",
+    "optimistix>=0.0.11",
+    "lineax>=0.0.8",
+    "equinox>=0.13.2",
+    "jax-progress",
 ]
 
 readme = "README.md"
@@ -103,7 +106,6 @@ module = [
     'tqdm',
     'optax',
     'optax.tree_utils',
-    'rich',
-    'rich.progress',
+    'jax_progress',
     ]
 ignore_missing_imports = true
