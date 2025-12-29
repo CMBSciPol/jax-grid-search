@@ -63,7 +63,7 @@ mpirun -n 4 python 05-distributed-grid-search.py
 ### 03-basic-optimization.ipynb
 - Simple quadratic function optimization with LBFGS
 - **Different optimizers**: LBFGS, Adam, SGD, RMSprop
-- **Progress tracking** with ProgressBar integration
+- **Progress tracking** with `TqdmProgressMeter` from `jax_progress`
 - **Convergence monitoring** with tolerance and iteration limits
 - **Parameter bounds** using box constraints
 - **Result visualization** and optimization trajectories
@@ -71,7 +71,7 @@ mpirun -n 4 python 05-distributed-grid-search.py
 ### 04-advanced-optimization.ipynb
 - **Update history logging** with `log_updates=True` and analysis plots
 - **Parallel optimization** using `jax.vmap` for multiple problems
-- **Progress tracking** multiple concurrent optimizations with unique IDs
+- **Progress tracking** with automatic vmap handling via `jax_progress`
 - **Custom optimizers** and Optax optimizer chains
 
 ### 05-distributed-grid-search.ipynb + .py
