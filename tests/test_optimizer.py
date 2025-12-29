@@ -8,8 +8,9 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 import optax.tree_utils as otu
+from jax_progress import TqdmProgressMeter
 
-from jax_grid_search import ProgressBar, condition, optimize
+from jax_grid_search import condition, optimize
 
 
 # Define a simple quadratic function: f(x) = (x - 3)^2
@@ -18,19 +19,17 @@ def quadratic(x: "jax._src.interpreters.ad.JVPTracer") -> "jax._src.interpreters
 
 
 def test_optimize_quadratic() -> None:
-    # Run the optimizer with non-verbose mode.
-
-    with ProgressBar() as p:
-        init_params = jnp.array([0.0])
-        solver = optax.lbfgs()
-        final_params, final_state = optimize(
-            init_params,
-            quadratic,
-            solver,
-            max_iter=50,
-            tol=1e-4,
-            progress=p,
-        )
+    # Run the optimizer with progress meter.
+    init_params = jnp.array([0.0])
+    solver = optax.lbfgs()
+    final_params, final_state = optimize(
+        init_params,
+        quadratic,
+        solver,
+        max_iter=50,
+        tol=1e-4,
+        progress=TqdmProgressMeter(total=50),
+    )
 
     # The minimum of (x-3)^2 is at x=3.0.
     np.testing.assert_allclose(final_params, jnp.array([3.0]), atol=1e-2)
@@ -75,15 +74,14 @@ def test_condition_minmax_scaling() -> None:
     # Test that optimization works in [0,1] space
     init_opt_params = to_opt({"x": 15.0, "y": 0.8})
 
-    with ProgressBar() as p:
-        final_opt_params, _ = optimize(
-            init_opt_params,
-            wrapped_fn,
-            optax.lbfgs(),
-            max_iter=100,
-            tol=1e-6,
-            progress=p,
-        )
+    final_opt_params, _ = optimize(
+        init_opt_params,
+        wrapped_fn,
+        optax.lbfgs(),
+        max_iter=100,
+        tol=1e-6,
+        progress=TqdmProgressMeter(total=100),
+    )
 
     # Convert back to physical space
     final_physical = from_opt(final_opt_params)
@@ -127,15 +125,14 @@ def test_condition_custom_transforms() -> None:
     # Optimize in transformed space
     init_opt_params = to_opt({"T": 10.0})
 
-    with ProgressBar() as p:
-        final_opt_params, _ = optimize(
-            init_opt_params,
-            wrapped_fn,
-            optax.lbfgs(),
-            max_iter=100,
-            tol=1e-6,
-            progress=p,
-        )
+    final_opt_params, _ = optimize(
+        init_opt_params,
+        wrapped_fn,
+        optax.lbfgs(),
+        max_iter=100,
+        tol=1e-6,
+        progress=TqdmProgressMeter(total=100),
+    )
 
     final_physical = from_opt(final_opt_params)
 
@@ -169,15 +166,14 @@ def test_condition_output_normalization() -> None:
     # Optimize with normalized function
     init_params = jnp.array([0.0])
 
-    with ProgressBar() as p:
-        final_params, _ = optimize(
-            init_params,
-            wrapped_fn,
-            optax.lbfgs(),
-            max_iter=100,
-            tol=1e-6,
-            progress=p,
-        )
+    final_params, _ = optimize(
+        init_params,
+        wrapped_fn,
+        optax.lbfgs(),
+        max_iter=100,
+        tol=1e-6,
+        progress=TqdmProgressMeter(total=100),
+    )
 
     # Should still find correct minimum
     np.testing.assert_allclose(final_params, jnp.array([3.0]), atol=1e-1)
@@ -278,15 +274,14 @@ def test_condition_pytree_parameters() -> None:
     # Optimize
     init_opt_params = to_opt({"a": 1.0, "b": 7.0, "c": 1.0})
 
-    with ProgressBar() as p:
-        final_opt_params, _ = optimize(
-            init_opt_params,
-            wrapped_fn,
-            optax.lbfgs(),
-            max_iter=100,
-            tol=1e-6,
-            progress=p,
-        )
+    final_opt_params, _ = optimize(
+        init_opt_params,
+        wrapped_fn,
+        optax.lbfgs(),
+        max_iter=100,
+        tol=1e-6,
+        progress=TqdmProgressMeter(total=100),
+    )
 
     final_physical = from_opt(final_opt_params)
 
