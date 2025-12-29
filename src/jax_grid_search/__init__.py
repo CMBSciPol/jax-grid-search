@@ -9,16 +9,15 @@ This package provides two complementary optimization approaches:
 
 2. **optimize**: Continuous optimization using gradient-based methods via Optax.
    Includes convergence monitoring, parameter bounds, update history logging,
-   and progress tracking.
-
-3. **ProgressBar**: JAX-compatible progress tracking system that works with
-   JIT compilation and distributed computing.
+   and progress tracking via jax-progress package.
 
 Main Components:
     DistributedGridSearch: Main class for parallel discrete parameter optimization
     optimize: Function for continuous optimization with various Optax optimizers
     condition: Function conditioning (parameter transforms + output normalization)
-    ProgressBar: Progress tracking compatible with JAX transformations
+
+For progress tracking, use TqdmProgressMeter from jax_progress:
+    >>> from jax_progress import TqdmProgressMeter
 
 Example:
     >>> import jax.numpy as jnp
@@ -40,7 +39,6 @@ For comprehensive tutorials and examples, see the examples/ directory.
 """
 
 from ._gridding import DistributedGridSearch
-from ._optimizers import condition, optimize
-from ._progressbar import ProgressBar
+from ._optimizers import condition, default_desc_cb, optimize
 
-__all__ = ["DistributedGridSearch", "optimize", "ProgressBar", "condition"]
+__all__ = ["DistributedGridSearch", "optimize", "condition", "default_desc_cb"]
