@@ -6,9 +6,8 @@ import jax
 import jax.numpy as jnp
 import optax
 import optax.tree_utils as otu
+from jax_progress import AbstractProgressMeter, NoProgressMeter
 from jaxtyping import Array, PyTree
-
-from ._progressbar import ProgressBar
 
 
 class OptimizerState(NamedTuple):
@@ -28,6 +27,7 @@ class OptimizerState(NamedTuple):
         best_val: Best (lowest) objective function value seen so far.
         best_params: Parameter values that achieved the best objective value.
         update_history: Optional array logging [update_norm, value] history if log_updates=True.
+        progress_state: Internal state for progress meter tracking.
     """
 
     params: PyTree
@@ -38,42 +38,39 @@ class OptimizerState(NamedTuple):
     best_val: float
     best_params: PyTree
     update_history: Optional[Array]
+    progress_state: PyTree
 
 
-def _debug_callback(
-    id: int,
-    arguments: Any,
-) -> str:
+def default_desc_cb(state: Any, args: Any) -> str:
     """
     Format progress information for optimization monitoring.
 
-    This callback function creates a human-readable progress string for the ProgressBar
+    This callback function creates a human-readable progress string for the progress meter
     during optimization. It displays the current update norm, convergence tolerance,
     iteration number, and objective value.
 
     Args:
-        id: Progress bar task ID (typically progress_id from optimize function).
-        arguments: Tuple containing (update_norm, tol, iter_num, value, max_iters).
+        state: Progress meter state (from jax-progress).
+        args: Tuple containing (update_norm, tol, iter_num, value).
 
     Returns:
         Formatted string showing optimization progress in scientific notation.
 
     Example output:
-        "Optimizing 0... update 1e-03 => 1e-10 at iter 15 value 2e-01"
+        "update 1e-03 => 1e-10 at iter 15 value 2e-01"
     """
-    update_norm, tol, iter_num, value, max_iters = arguments
-    return f"Optimizing {id}... update {update_norm:.0e} => {tol:.0e} at iter {iter_num} value {value:.0e}"
+    update_norm, tol, iter_num, value = args
+    return f"update {update_norm:.0e} => {tol:.0e} at iter {iter_num} value {value:.0e}"
 
 
-@partial(jax.jit, static_argnums=(1, 2, 3, 5, 9))
+@partial(jax.jit, static_argnums=(1, 2, 3, 5, 8))
 def optimize(
     init_params: Array,
     objective_fn: Callable[[Array], Array],
     opt: optax._src.base.GradientTransformationExtraArgs,
     max_iter: int,
     tol: Array,
-    progress: Optional[ProgressBar] = None,
-    progress_id: int = 0,
+    progress: AbstractProgressMeter = NoProgressMeter(),
     upper_bound: Optional[Array] = None,
     lower_bound: Optional[Array] = None,
     log_updates: bool = False,
@@ -93,8 +90,8 @@ def optimize(
         opt: Optax optimizer instance (e.g., optax.lbfgs(), optax.adam()).
         max_iter: Maximum number of optimization iterations.
         tol: Convergence tolerance. Optimization stops when update norm < tol.
-        progress: Optional ProgressBar instance for tracking optimization progress.
-        progress_id: ID for progress tracking when running multiple optimizations in parallel.
+        progress: Progress meter for tracking optimization progress. Defaults to NoProgressMeter()
+            (no-op). Use TqdmProgressMeter(total=max_iter) for visible progress tracking.
         upper_bound: Optional upper bounds for parameters (used with box projection).
         lower_bound: Optional lower bounds for parameters (used with box projection).
         log_updates: If True, logs update norms and values for debugging.
@@ -108,7 +105,7 @@ def optimize(
     Example:
         >>> import jax.numpy as jnp
         >>> import optax
-        >>> from jax_grid_search import optimize, ProgressBar
+        >>> from jax_grid_search import optimize, TqdmProgressMeter
         >>>
         >>> def quadratic(x):
         ...     return jnp.sum((x - 3.0) ** 2)
@@ -116,11 +113,11 @@ def optimize(
         >>> init_params = jnp.array([0.0])
         >>> optimizer = optax.lbfgs()
         >>>
-        >>> with ProgressBar() as p:
-        ...     best_params, state = optimize(
-        ...         init_params, quadratic, optimizer,
-        ...         max_iter=50, tol=1e-10, progress=p
-        ...     )
+        >>> best_params, state = optimize(
+        ...     init_params, quadratic, optimizer,
+        ...     max_iter=50, tol=1e-10,
+        ...     progress=TqdmProgressMeter(total=50)
+        ... )
         >>> print(f"Optimized parameters: {best_params}")
 
     Note:
@@ -155,9 +152,9 @@ def optimize(
 
         best_val = jnp.where((carry.best_val < value), carry.best_val, value)
 
-        if progress:
-            iter_num = otu.tree_get(carry.state, "count")
-            progress.update(progress_id, (update_norm, tol, iter_num, carry.value, max_iter), desc_cb=_debug_callback, total=max_iter)
+        iter_num = otu.tree_get(carry.state, "count")
+        description_args = (update_norm, tol, iter_num, carry.value)
+        new_progress_state = progress.step(carry.progress_state, progress=1, description_args=description_args)
 
         return carry._replace(
             params=params,
@@ -167,6 +164,7 @@ def optimize(
             best_val=best_val,
             best_params=best_params,
             update_norm=update_norm,
+            progress_state=new_progress_state,
         )
 
     # Stopping condition.
@@ -176,15 +174,15 @@ def optimize(
         update_norm = carry.update_norm
         return (iter_num == 0) | ((iter_num < max_iter) & (update_norm >= tol))
 
-    # Initialize optimizer state.
-    init_state = OptimizerState(init_params, opt.init(init_params), init_params, jnp.inf, jnp.inf, jnp.inf, init_params, update_history)
+    # Initialize optimizer state and progress meter.
+    progress_state = progress.init(vmapped_element=init_params)
+    init_state = OptimizerState(
+        init_params, opt.init(init_params), init_params, jnp.inf, jnp.inf, jnp.inf, init_params, update_history, progress_state
+    )
 
     # Run the while loop.
-    if progress:
-        progress.create_task(progress_id, total=max_iter)
     final_opt_state = jax.lax.while_loop(continuing_criterion, step, init_state)
-    if progress:
-        progress.finish(progress_id, total=max_iter)
+    progress.close(final_opt_state.progress_state)
 
     # Was the last evaluation better than the best?
     best_params = jax.tree.map(

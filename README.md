@@ -199,7 +199,8 @@ Use the continuous optimization routine to minimize a function with gradient-bas
 ```python
 import jax.numpy as jnp
 import optax
-from jax_grid_search import optimize , ProgressBar
+from jax_grid_search import optimize
+from jax_progress import TqdmProgressMeter
 
 # Define a continuous objective function (e.g., quadratic)
 def quadratic(x):
@@ -209,15 +210,14 @@ def quadratic(x):
 init_params = jnp.array([0.0])
 optimizer = optax.lbfgs()
 
-with ProgressBar() as p:
-    # Run continuous optimization with progress monitoring (optional)
-    best_params, opt_state = optimize(
-        init_params,
-        quadratic,
-        opt=optimizer,
-        max_iter=50,
-        tol=1e-10,
-        progress=p  # Replace with a ProgressBar instance for visual updates if desired
+# Run continuous optimization with progress monitoring (optional)
+best_params, opt_state = optimize(
+    init_params,
+    quadratic,
+    opt=optimizer,
+    max_iter=50,
+    tol=1e-10,
+    progress=TqdmProgressMeter(total=50)
 )
 
 print("Optimized Parameters:", best_params)
@@ -229,7 +229,8 @@ The library supports various Optax optimizers beyond LBFGS:
 
 ```python
 import optax
-from jax_grid_search import optimize, ProgressBar
+from jax_grid_search import optimize
+from jax_progress import TqdmProgressMeter
 
 def rosenbrock(x):
     # Classic optimization test function
@@ -245,13 +246,13 @@ optimizers = {
     "RMSprop": optax.rmsprop(learning_rate=0.01)
 }
 
-with ProgressBar() as p:
-    for name, optimizer in optimizers.items():
-        result, state = optimize(
-            init_params, rosenbrock, optimizer,
-            max_iter=1000, tol=1e-8, progress=p
-        )
-        print(f"{name}: {result}, final value: {rosenbrock(result)}")
+for name, optimizer in optimizers.items():
+    result, state = optimize(
+        init_params, rosenbrock, optimizer,
+        max_iter=1000, tol=1e-8,
+        progress=TqdmProgressMeter(total=1000)
+    )
+    print(f"{name}: {result}, final value: {rosenbrock(result)}")
 ```
 
 #### Parameter Bounds and Constraints
@@ -259,21 +260,22 @@ with ProgressBar() as p:
 Use box constraints to limit parameter values during optimization:
 
 ```python
+from jax_progress import TqdmProgressMeter
+
 # Constrain parameters to [0, 10] range
 lower_bounds = jnp.array([0.0, 0.0])
 upper_bounds = jnp.array([10.0, 10.0])
 
-with ProgressBar() as p:
-    result, state = optimize(
-        init_params,
-        objective_function,
-        optax.adam(0.1),
-        max_iter=100,
-        tol=1e-6,
-        progress=p,
-        lower_bound=lower_bounds,
-        upper_bound=upper_bounds
-    )
+result, state = optimize(
+    init_params,
+    objective_function,
+    optax.adam(0.1),
+    max_iter=100,
+    tol=1e-6,
+    progress=TqdmProgressMeter(total=100),
+    lower_bound=lower_bounds,
+    upper_bound=upper_bounds
+)
 ```
 
 #### Update History and Debugging
@@ -281,16 +283,17 @@ with ProgressBar() as p:
 Track optimization progress for analysis and debugging:
 
 ```python
-with ProgressBar() as p:
-    result, state = optimize(
-        init_params,
-        objective_function,
-        optax.lbfgs(),
-        max_iter=100,
-        tol=1e-8,
-        progress=p,
-        log_updates=True  # Enable update history logging
-    )
+from jax_progress import TqdmProgressMeter
+
+result, state = optimize(
+    init_params,
+    objective_function,
+    optax.lbfgs(),
+    max_iter=100,
+    tol=1e-8,
+    progress=TqdmProgressMeter(total=100),
+    log_updates=True  # Enable update history logging
+)
 
 # Plot optimization history
 import matplotlib.pyplot as plt
@@ -315,41 +318,41 @@ if state.update_history is not None:
 
 You can run multiple optimization tasks in parallel using `jax.vmap`. This is useful when optimizing multiple functions or parameters simultaneously.
 
-(This is very usefull for simulating multiple noise realizations for example)
+(This is very useful for simulating multiple noise realizations for example)
 
-You can use `progress_id` to track the progress of each optimization task running in parallel.
+The jax-progress library automatically handles vmap tracking internally.
 
 ```python
 import jax
 import jax.numpy as jnp
 import optax
+from jax_grid_search import optimize
+from jax_progress import TqdmProgressMeter
 
 # Define multiple objective functions
-def objective_fn(x , normal):
+def objective_fn(x, normal):
     return jnp.sum(((x - 3.0) ** 2) + normal)
 
-with ProgressBar() as p:
+progress = TqdmProgressMeter(total=50)
 
-    def solve_one(seed):
-        init_params = jnp.array([0.0])
-        normal = jax.random.normal(jax.random.PRNGKey(seed), init_params.shape)
-        optimizer = optax.lbfgs()
-        # Run continuous optimization with progress monitoring (optional)
-        best_params, opt_state = optimize(
-            init_params,
-            objective_fn,
-            opt=optimizer,
-            max_iter=50,
-            tol=1e-4,
-            progress=p,
-            progress_id=seed,
-            normal=normal
-        )
+def solve_one(seed):
+    init_params = jnp.array([0.0])
+    normal = jax.random.normal(jax.random.PRNGKey(seed), init_params.shape)
+    optimizer = optax.lbfgs()
+    # Run continuous optimization with progress monitoring (optional)
+    best_params, opt_state = optimize(
+        init_params,
+        objective_fn,
+        opt=optimizer,
+        max_iter=50,
+        tol=1e-4,
+        progress=progress,
+        normal=normal
+    )
 
-        return best_params
+    return best_params
 
-    jax.vmap(solve_one)(jnp.arange(10))
-
+jax.vmap(solve_one)(jnp.arange(10))
 ```
 
 ### 3. Function Conditioning
@@ -359,7 +362,8 @@ Improve optimization performance by transforming parameters to similar scales an
 ```python
 import jax.numpy as jnp
 import optax
-from jax_grid_search import condition, optimize, ProgressBar
+from jax_grid_search import condition, optimize
+from jax_progress import TqdmProgressMeter
 
 # Function with parameters in different scales and large output
 npix = 12 * 64**2  # HEALPix pixels
@@ -382,15 +386,14 @@ conditioned_fn, to_opt, from_opt = condition(
 # Transform parameters to [0,1] space, optimize, then transform back
 init_opt = to_opt({'temp': 15.0, 'beta': 1.0})
 
-with ProgressBar() as p:
-    result_opt, _ = optimize(
-        init_opt,
-        conditioned_fn,
-        optax.lbfgs(),
-        max_iter=100,
-        tol=1e-6,
-        progress=p
-    )
+result_opt, _ = optimize(
+    init_opt,
+    conditioned_fn,
+    optax.lbfgs(),
+    max_iter=100,
+    tol=1e-6,
+    progress=TqdmProgressMeter(total=100)
+)
 
 result = from_opt(result_opt)  # Back to physical space
 print(f"Optimized: temp={result['temp']:.2f}, beta={result['beta']:.3f}")
