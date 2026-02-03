@@ -12,13 +12,8 @@ authors = [
 dependencies = [
     "jax",
     "tqdm",
-    "optax",
     "jaxtyping",
     "typing-extensions; python_version < '3.11'",
-    "optimistix>=0.0.11",
-    "lineax>=0.0.8",
-    "equinox>=0.13.2",
-    "jax-progress",
 ]
 
 readme = "README.md"
@@ -104,8 +99,5 @@ module = [
     'scipy',
     'scipy.interpolate',
     'tqdm',
-    'optax',
-    'optax.tree_utils',
-    'jax_progress',
     ]
 ignore_missing_imports = true
