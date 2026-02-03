@@ -50,6 +50,12 @@ test = [
     'pytest-mock',
     'chex',
 ]
+notebooks = [
+    "ipykernel",
+    "ipython",
+    "jupyterlab",
+    "matplotlib",
+]
 
 [tool.coverage.report]
 exclude_lines = [
