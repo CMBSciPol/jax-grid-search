@@ -1,6 +1,7 @@
 # Distributed Grid Search & Continuous Optimization using JAX
 
-[![Testing](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/tests.yml/badge.svg)](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/tests.yml)
+[![Tests](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/tests.yml/badge.svg)](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/tests.yml)
+[![Notebooks](https://img.shields.io/github/actions/workflow/status/CMBSciPol/jax-grid-search/notebooks.yml?logo=jupyter&label=notebooks)](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/notebooks.yml)
 [![Code Formatting](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/formatting.yml/badge.svg)](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/formatting.yml)
 [![Upload Python Package](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/python-publish.yml/badge.svg)](https://github.com/CMBSciPol/jax-grid-search/actions/workflows/python-publish.yml)
 [![PyPI version](https://badge.fury.io/py/jax-grid-search.svg)](https://badge.fury.io/py/jax-grid-search)
