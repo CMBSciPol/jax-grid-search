@@ -1,23 +1,17 @@
 """
 JAX Grid Search - Distributed optimization library for JAX
 
-This package provides two complementary optimization approaches:
+This package provides:
 
 1. **DistributedGridSearch**: Discrete parameter space exploration using distributed
    computing. Supports both cartesian and vectorized combination strategies, automatic
    memory management, resume functionality, and multi-dimensional parameters.
 
-2. **optimize**: Continuous optimization using gradient-based methods via Optax.
-   Includes convergence monitoring, parameter bounds, update history logging,
-   and progress tracking via jax-progress package.
+2. **optimize**: DEPRECATED. Please use `furax_cs.minimize` instead.
 
 Main Components:
     DistributedGridSearch: Main class for parallel discrete parameter optimization
-    optimize: Function for continuous optimization with various Optax optimizers
-    condition: Function conditioning (parameter transforms + output normalization)
-
-For progress tracking, use TqdmProgressMeter from jax_progress:
-    >>> from jax_progress import TqdmProgressMeter
+    optimize: Deprecated function (raises NotImplementedError)
 
 Example:
     >>> import jax.numpy as jnp
@@ -39,6 +33,6 @@ For comprehensive tutorials and examples, see the examples/ directory.
 """
 
 from ._gridding import DistributedGridSearch
-from ._optimizers import condition, default_desc_cb, optimize
+from ._optimizers import optimize
 
-__all__ = ["DistributedGridSearch", "optimize", "condition", "default_desc_cb"]
+__all__ = ["DistributedGridSearch", "optimize"]

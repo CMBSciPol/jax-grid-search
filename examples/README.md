@@ -1,6 +1,6 @@
 # JAX Grid Search Examples
 
-This directory contains comprehensive examples demonstrating both distributed grid search and continuous optimization capabilities.
+This directory contains comprehensive examples demonstrating distributed grid search capabilities.
 
 ## Overview
 
@@ -9,13 +9,6 @@ The examples are organized to progressively build understanding from basic conce
 ### Grid Search Examples
 - **[01-basic-grid-search.ipynb](./01-basic-grid-search.ipynb)** - Fundamental grid search concepts and usage
 - **[02-advanced-grid-search.ipynb](./02-advanced-grid-search.ipynb)** - Advanced features like vectorized strategy and resuming
-
-### Continuous Optimization Examples
-- **[03-basic-optimization.ipynb](./03-basic-optimization.ipynb)** - Getting started with continuous optimization
-- **[04-advanced-optimization.ipynb](./04-advanced-optimization.ipynb)** - Advanced optimization techniques and debugging
-
-### Function Conditioning
-- **[06-function-conditioning.ipynb](./06-function-conditioning.ipynb)** - Parameter transformation and output normalization
 
 ### Distributed Computing
 - **[05-distributed-grid-search.ipynb](./05-distributed-grid-search.ipynb)** - Multi-process grid search with MPI
@@ -60,20 +53,6 @@ mpirun -n 4 python 05-distributed-grid-search.py
 - **Multiple return values** from objective functions
 - **Progress customization** with different logging frequencies
 
-### 03-basic-optimization.ipynb
-- Simple quadratic function optimization with LBFGS
-- **Different optimizers**: LBFGS, Adam, SGD, RMSprop
-- **Progress tracking** with `TqdmProgressMeter` from `jax_progress`
-- **Convergence monitoring** with tolerance and iteration limits
-- **Parameter bounds** using box constraints
-- **Result visualization** and optimization trajectories
-
-### 04-advanced-optimization.ipynb
-- **Update history logging** with `log_updates=True` and analysis plots
-- **Parallel optimization** using `jax.vmap` for multiple problems
-- **Progress tracking** with automatic vmap handling via `jax_progress`
-- **Custom optimizers** and Optax optimizer chains
-
 ### 05-distributed-grid-search.ipynb + .py
 - **MPI setup** and JAX distributed initialization
 - **Process distribution** and rank-based computation
@@ -88,9 +67,3 @@ mpirun -n 4 python 05-distributed-grid-search.py
 - Use JAX-compatible operations (`jnp` instead of `np`)
 - Avoid Python control flow (use `jax.lax.cond`, `jnp.where`)
 - Consider numerical stability for optimization
-
-### Parameter Conditioning
-- Use min-max scaling when parameters have vastly different scales
-- Apply log transforms for positive-only parameters (temperature, amplitude)
-- Normalize output by problem size (e.g., number of pixels × components)
-- Verify transformations with to_opt/from_opt roundtrips
