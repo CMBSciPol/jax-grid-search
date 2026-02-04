@@ -7,7 +7,8 @@ It's designed to be called from the companion Jupyter notebook.
 
 Usage:
     mpirun -n 4 python 05-distributed-grid-search.py
-    mpirun -n 8 python 05-distributed-grid-search.py
+    # If running on a machine with fewer than 4 cores (e.g. CI), use --oversubscribe:
+    mpirun --oversubscribe -n 4 python 05-distributed-grid-search.py
 """
 
 import os
